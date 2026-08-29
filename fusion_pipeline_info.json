@@ -1,0 +1,1 @@
+{"mitigation_weight": 0.3, "ad_threshold": 0.3, "ad_method": "max Tanimoto similarity to training set fingerprints", "risk_tiers": [[0.6, "High"], [0.3, "Medium"], [0.0, "Low"]], "channel_models": {"hERG": "Stacking_RF_ET_LGBM", "Cav": "Voting_LR_SVC_GB", "Nav": "Voting_SVC_GB_XGB"}, "formula": "composite = hERG_risk * (1 - mitigation_weight * mean(Ca_risk, Na_risk))"}
