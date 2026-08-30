@@ -1,142 +1,47 @@
 # ==========================================================
-# Multi-Channel Cardiotoxicity Predictor — Streamlit App
-# hERG / Cav / Nav ion-channel blocker prediction + late-fusion risk score
+# CardioTox-UR — Home page
 # ==========================================================
 
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle, json, os, io
+import io, tempfile, os
+from datetime import datetime
 
-st.set_page_config(page_title="Cardiotoxicity Predictor", layout="wide")
+st.set_page_config(page_title="CardioTox-UR", layout="wide", page_icon="🫀")
 
-# ----------------------------------------------------------
-# Load artifacts (cached — runs once per app session, not per prediction)
-# ----------------------------------------------------------
-@st.cache_resource
-def load_artifacts():
-    import gdown
+from pipeline import predict_cardiotoxicity, AD_THRESHOLD
+from report_utils import generate_single_pdf, generate_single_csv
+from rdkit import Chem
+from rdkit.Chem import Draw
 
-    # Small models + config committed directly to the repo
-    with open('small_models.pkl', 'rb') as f:
-        small_models = pickle.load(f)
-
-    with open('preprocessing_objects.pkl', 'rb') as f:
-        preproc = pickle.load(f)
-
-    with open('train_fps_cache.pkl', 'rb') as f:
-        train_fps_cache = pickle.load(f)
-
-    with open('descriptor_list.json', 'r') as f:
-        descriptor_names = json.load(f)
-
-    with open('fusion_pipeline_info.json', 'r') as f:
-        fusion_config = json.load(f)
-
-    # hERG model is too large for GitHub — download from Drive on first run
-    herg_path = 'herg_model_downloaded.pkl'
-    if not os.path.exists(herg_path):
-        file_id = '1PdZD162tBdsk4DKLX8lmHe5DXPbgIEf_'
-        gdown.download(f'https://drive.google.com/uc?id={file_id}', herg_path, quiet=False)
-
-    with open(herg_path, 'rb') as f:
-        herg_model = pickle.load(f)
-
-    final_models = {'herg': herg_model, 'cav': small_models['cav'], 'nav': small_models['nav']}
-
-    return final_models, preproc, train_fps_cache, descriptor_names, fusion_config
-
-
-with st.spinner("Loading models (first run may take ~1-2 min to download hERG model)..."):
-    final_models, preproc, train_fps_cache, descriptor_names, fusion_config = load_artifacts()
-
-from rdkit import Chem, DataStructs
-from rdkit.Chem import AllChem, Descriptors, Draw
-
-AD_THRESHOLD = fusion_config['ad_threshold']
-MITIGATION_WEIGHT = fusion_config['mitigation_weight']
-RISK_TIERS = fusion_config['risk_tiers']
-
-# ----------------------------------------------------------
-# Pipeline functions (identical logic to the notebook's rebuilt pipeline)
-# ----------------------------------------------------------
-def compute_descriptors(mol):
-    return {
-        'MolWt': Descriptors.MolWt(mol), 'MolLogP': Descriptors.MolLogP(mol),
-        'TPSA': Descriptors.TPSA(mol), 'NumHDonors': Descriptors.NumHDonors(mol),
-        'NumHAcceptors': Descriptors.NumHAcceptors(mol), 'NumRotatableBonds': Descriptors.NumRotatableBonds(mol),
-        'NumAromaticRings': Descriptors.NumAromaticRings(mol), 'RingCount': Descriptors.RingCount(mol),
-        'FractionCSP3': Descriptors.FractionCSP3(mol), 'NumHeteroatoms': Descriptors.NumHeteroatoms(mol),
-        'NumSaturatedRings': Descriptors.NumSaturatedRings(mol), 'HeavyAtomCount': Descriptors.HeavyAtomCount(mol),
-        'NumAliphaticRings': Descriptors.NumAliphaticRings(mol),
-    }
-
-def featurize_smiles(smiles, channel):
-    mol = Chem.MolFromSmiles(smiles)
-    if mol is None:
-        raise ValueError(f"Invalid SMILES: {smiles}")
-
-    fp_size = 2048 if channel == 'herg' else 1024
-    fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=fp_size)
-    fp_arr = np.array(fp)
-
-    if channel != 'herg':
-        selector = preproc['fp_selectors'][channel]
-        fp_arr = fp_arr[selector.get_support()]
-
-    desc_dict = compute_descriptors(mol)
-    desc_vec = np.array([desc_dict[name] for name in descriptor_names]).reshape(1, -1)
-    desc_scaled = preproc['descriptor_scalers'][channel].transform(desc_vec).flatten()
-
-    return np.concatenate([fp_arr, desc_scaled]).reshape(1, -1)
-
-def get_risk_tier(score):
-    for threshold, label in RISK_TIERS:
-        if score >= threshold:
-            return label
-    return RISK_TIERS[-1][1]
-
-def max_tanimoto_to_train(smiles, channel):
-    mol = Chem.MolFromSmiles(smiles)
-    fp_size = 2048 if channel == 'herg' else 1024
-    query_fp = AllChem.GetMorganFingerprintAsBitVect(mol, radius=2, nBits=fp_size)
-    sims = DataStructs.BulkTanimotoSimilarity(query_fp, train_fps_cache[channel])
-    return max(sims)
-
-def predict_cardiotoxicity(smiles):
-    herg_vec = featurize_smiles(smiles, 'herg')
-    cav_vec  = featurize_smiles(smiles, 'cav')
-    nav_vec  = featurize_smiles(smiles, 'nav')
-
-    herg_prob = final_models['herg'].predict_proba(herg_vec)[0, 1]
-    cav_prob  = final_models['cav'].predict_proba(cav_vec)[0, 1]
-    nav_prob  = final_models['nav'].predict_proba(nav_vec)[0, 1]
-
-    composite = herg_prob * (1 - MITIGATION_WEIGHT * np.mean([cav_prob, nav_prob]))
-    risk_tier = get_risk_tier(composite)
-
-    ad_sims = {ch: max_tanimoto_to_train(smiles, ch) for ch in ['herg', 'cav', 'nav']}
-    in_ad = all(sim >= AD_THRESHOLD for sim in ad_sims.values())
-    confidence = "Reliable (in AD)" if in_ad else "Low confidence (outside AD)"
-
-    return {
-        'herg_prob': herg_prob, 'ca_prob': cav_prob, 'na_prob': nav_prob,
-        'composite_score': composite, 'risk_tier': risk_tier,
-        'confidence': confidence, 'ad_similarities': ad_sims,
-    }
-
-# ----------------------------------------------------------
-# UI
-# ----------------------------------------------------------
-st.title("🫀 Multi-Channel Cardiotoxicity Predictor")
+st.markdown(
+    "<div style='display:flex; align-items:center; gap:12px;'>"
+    "<span style='font-size:48px;'>🫀</span>"
+    "<h1 style='margin:0;'><span style='color:#E63946;'>Cardiotox</span>"
+    "<span style='color:#2A9D8F;'>-UR</span></h1>"
+    "</div>",
+    unsafe_allow_html=True,
+)
+st.markdown("<p style='font-size:18px; color:#555;'>Multi-Channel Cardiotoxicity Predictor</p>", unsafe_allow_html=True)
 st.caption("Predicts hERG / Cav / Nav ion-channel blockade risk and a fused cardiotoxicity risk score, from SMILES.")
 
-tab1, tab2 = st.tabs(["Single Compound", "Batch (CSV Upload)"])
+if 'history' not in st.session_state:
+    st.session_state.history = []
+
+tab1, tab2, tab3 = st.tabs(["🔬 Single Prediction", "📋 Batch Prediction", "🕒 History"])
 
 with tab1:
-    smiles_input = st.text_input("Enter SMILES", placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O")
+    with st.expander("Don't have a SMILES string?"):
+        st.markdown(
+            "Look up your compound on [PubChem](https://pubchem.ncbi.nlm.nih.gov/) — "
+            "search by name, open the compound page, and copy the **Canonical SMILES** "
+            "field under the 'Names and Identifiers' section."
+        )
 
-    if st.button("Predict", type="primary"):
+    smiles_input = st.text_input("Enter SMILES", placeholder="e.g. CC(=O)Oc1ccccc1C(=O)O", key="single_smiles")
+
+    if st.button("Predict", type="primary", key="single_predict_btn"):
         mol = Chem.MolFromSmiles(smiles_input) if smiles_input else None
         if mol is None:
             st.error("Invalid or empty SMILES string.")
@@ -157,23 +62,45 @@ with tab1:
 
                 st.write("**Per-channel blocker probability:**")
                 c1, c2, c3 = st.columns(3)
-                c1.metric("hERG", f"{result['herg_prob']:.3f}")
-                c2.metric("Cav", f"{result['ca_prob']:.3f}")
-                c3.metric("Nav", f"{result['na_prob']:.3f}")
+                c1.metric("hERG (K+)", f"{result['herg_prob']:.3f}")
+                c2.metric("Cav (Ca2+)", f"{result['ca_prob']:.3f}")
+                c3.metric("Nav (Na+)", f"{result['na_prob']:.3f}")
 
                 with st.expander("Applicability domain similarities"):
                     for ch, sim in result['ad_similarities'].items():
                         st.write(f"{ch.upper()}: max Tanimoto similarity to training set = {sim:.3f} "
                                  f"({'✓ in AD' if sim >= AD_THRESHOLD else '✗ outside AD'})")
 
+                with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_img:
+                    img.save(tmp_img.name)
+                    pdf_bytes = generate_single_pdf(smiles_input, result, mol_img_path=tmp_img.name)
+                os.unlink(tmp_img.name)
+
+                csv_str = generate_single_csv(smiles_input, result)
+
+                dl1, dl2 = st.columns(2)
+                dl1.download_button("📄 Download PDF report", pdf_bytes,
+                                     "cardiotox_report.pdf", "application/pdf")
+                dl2.download_button("📊 Download CSV", csv_str,
+                                     "cardiotox_report.csv", "text/csv")
+
+                st.session_state.history.append({
+                    'Timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'Type': 'Single', 'SMILES': smiles_input,
+                    'hERG_prob': round(result['herg_prob'], 3), 'Ca_prob': round(result['ca_prob'], 3),
+                    'Na_prob': round(result['na_prob'], 3), 'Composite_score': round(result['composite_score'], 3),
+                    'Risk_tier': result['risk_tier'], 'Confidence': result['confidence'],
+                })
+
 with tab2:
-    uploaded_file = st.file_uploader("Upload CSV with a 'SMILES' column", type='csv')
+    st.markdown("Upload a CSV containing a column of SMILES strings.")
+    uploaded_file = st.file_uploader("Upload CSV", type='csv', key="batch_upload")
 
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
         smiles_col = st.selectbox("Which column contains SMILES?", df.columns.tolist())
 
-        if st.button("Run batch prediction", type="primary"):
+        if st.button("Run batch prediction", type="primary", key="batch_predict_btn"):
             progress = st.progress(0)
             batch_results = []
 
@@ -200,8 +127,35 @@ with tab2:
 
             csv_buffer = io.StringIO()
             results_df.to_csv(csv_buffer, index=False)
-            st.download_button("Download results (CSV)", csv_buffer.getvalue(),
-                                "cardiotoxicity_predictions.csv", "text/csv")
+            st.download_button("📊 Download results (CSV)", csv_buffer.getvalue(),
+                                "cardiotox_batch_predictions.csv", "text/csv")
+
+            st.session_state.history.append({
+                'Timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                'Type': f'Batch ({len(df)} compounds)', 'SMILES': f'{len(df)} compounds',
+                'hERG_prob': None, 'Ca_prob': None, 'Na_prob': None,
+                'Composite_score': None,
+                'Risk_tier': f"{(results_df['Risk_tier']=='High').sum()} High / "
+                              f"{(results_df['Risk_tier']=='Medium').sum()} Med / "
+                              f"{(results_df['Risk_tier']=='Low').sum()} Low",
+                'Confidence': '—',
+            })
+
+with tab3:
+    if not st.session_state.history:
+        st.info("No predictions yet this session. Run a single or batch prediction to see it logged here.")
+    else:
+        hist_df = pd.DataFrame(st.session_state.history)
+        st.dataframe(hist_df, use_container_width=True)
+
+        hist_csv = io.StringIO()
+        hist_df.to_csv(hist_csv, index=False)
+        col1, col2 = st.columns(2)
+        col1.download_button("📊 Download full history (CSV)", hist_csv.getvalue(),
+                              "cardiotox_history.csv", "text/csv")
+        if col2.button("🗑 Clear history"):
+            st.session_state.history = []
+            st.rerun()
 
 st.divider()
 st.caption("Composite score = hERG_risk × (1 − mitigation_weight × mean(Ca_risk, Na_risk)). "
