@@ -49,10 +49,10 @@ with tab1:
 
     st.markdown("**Try an example:**")
     example_compounds = {
-        "Aspirin (Low risk)": "CC(=O)Oc1ccccc1C(=O)O",
-        "Terfenadine (High risk)": "CC(C)(C)c1ccc(cc1)C(O)CCCN1CCC(CC1)C(O)(c1ccccc1)c1ccccc1",
-        "Verapamil (High risk)": "COc1ccc(CCN(C)CCCC(C#N)(c2ccc(OC)c(OC)c2)C(C)C)cc1OC",
-        "Amiodarone (High risk)": "CCN(CC)CCOc1c(I)cc(cc1I)C(=O)c2c3ccccc3oc2CCCC",
+        "Aspirin": "CC(=O)Oc1ccccc1C(=O)O",
+        "Terfenadine": "CC(C)(C)c1ccc(cc1)C(O)CCCN1CCC(CC1)C(O)(c1ccccc1)c1ccccc1",
+        "Verapamil": "COc1ccc(CCN(C)CCCC(C#N)(c2ccc(OC)c(OC)c2)C(C)C)cc1OC",
+        "Amiodarone": "CCN(CC)CCOc1c(I)cc(cc1I)C(=O)c2c3ccccc3oc2CCCC",
     }
     ex_cols = st.columns(len(example_compounds))
     for col, (label, smi) in zip(ex_cols, example_compounds.items()):
