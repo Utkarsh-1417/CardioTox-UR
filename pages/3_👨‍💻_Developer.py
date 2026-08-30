@@ -41,8 +41,6 @@ with col2:
     cardiotoxicity risk from molecular structure.
     """)
 
-    st.caption("This is an academic research project developed as a part of the requirement for the fulfillment of the Bachelor of Pharmacy (B.Pharm) degree.")
-
     st.markdown("### Connect")
     st.markdown("""
     🔗 [LinkedIn](https://www.linkedin.com/in/utkarsh-kumar-962046330)
@@ -53,3 +51,5 @@ with col2:
 st.divider()
 st.caption("CardioTox-UR is an academic/research project and is intended for educational and "
            "early-stage screening purposes, not for clinical or regulatory decision-making.")
+
+st.markdown("<p style='text-align:center; font-size:16px; color:#444; margin-top:20px;'>This is an academic research project developed as a part of the requirement for the fulfillment of the Bachelor of Pharmacy (B.Pharm) degree.</p>", unsafe_allow_html=True)
