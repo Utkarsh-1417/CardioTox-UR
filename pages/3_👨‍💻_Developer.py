@@ -29,6 +29,10 @@ with col2:
     Utkarsh completed his **Bachelor of Pharmacy in 2026** and went on to complete a
     **research internship at IIT (BHU) Varanasi**, focused on AI in Drug Discovery.
 
+    He has also completed an **Executive Diploma in Pharmacovigilance**, an **Executive
+    Diploma in Medical Writing**, an **Industrial Internship in Clinical Research**, and an
+    **Executive Diploma in Clinical Data Management**.
+
     He has previously worked on developing a **hepatotoxicity (DILI) prediction model** and a
     **P2X7 receptor activity prediction model**, and is currently developing **cardiotoxicity
     prediction models** using machine learning and cheminformatics — combining a pharmaceutical
@@ -36,6 +40,8 @@ with col2:
     screening. **CardioTox-UR** is his latest project, predicting ion-channel-mediated
     cardiotoxicity risk from molecular structure.
     """)
+
+    st.caption("This is an academic research project developed as a part of the requirement for the fulfillment of the Bachelor of Pharmacy (B.Pharm) degree.")
 
     st.markdown("### Connect")
     st.markdown("""

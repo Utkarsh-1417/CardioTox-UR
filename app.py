@@ -34,6 +34,8 @@ st.warning(
     "screening, especially for molecules flagged as outside the model's applicability domain."
 )
 
+st.caption("This is an academic research project developed as a part of the requirement for the fulfillment of the Bachelor of Pharmacy (B.Pharm) degree.")
+
 if 'history' not in st.session_state:
     st.session_state.history = []
 
