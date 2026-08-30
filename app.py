@@ -182,6 +182,5 @@ st.divider()
 st.caption("Composite score = hERG_risk × (1 − mitigation_weight × mean(Ca_risk, Na_risk)). "
            "Ca/Na channel block is treated as electrophysiologically mitigating hERG-driven risk (CiPA-style fusion).")
 
-st.markdown("<p style='text-align:center; font-size:16px; color:#444; margin-top:20px;'>This is an academic research project developed as a part of the requirement for the fulfillment of the Bachelor of Pharmacy (B.Pharm) degree.</p>", unsafe_allow_html=True)
 
 st.markdown("<p style='text-align:center; font-size:20px; color:#444; margin-top:20px;'>This is an academic research project developed as a part of the requirement for the fulfillment of the Bachelor of Pharmacy (B.Pharm) degree.</p>", unsafe_allow_html=True)
