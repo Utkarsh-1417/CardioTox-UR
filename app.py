@@ -10,6 +10,41 @@ from datetime import datetime
 
 st.set_page_config(page_title="CardioTox-UR", layout="wide", page_icon="🫀")
 
+st.markdown("""
+<style>
+.stApp {
+    background: linear-gradient(180deg, #FFF3F0 0%, #FFF8F6 40%, #FFFFFF 100%);
+}
+div[data-testid="stExpander"], div[data-testid="stMetric"] {
+    border: 1px solid #F5C6C6 !important;
+    border-radius: 10px;
+}
+.stTabs [data-baseweb="tab"] {
+    font-weight: 600;
+}
+.stButton > button {
+    border-radius: 20px !important;
+    border: 1px solid #D62828 !important;
+}
+.stButton > button:hover {
+    background-color: #FBE0E0 !important;
+    color: #D62828 !important;
+}
+h1, h2, h3 {
+    color: #7A0C0C;
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div style='text-align:center; margin:10px 0 20px 0;'>
+<svg width='100%' height='30' viewBox='0 0 600 30' preserveAspectRatio='none'>
+<polyline points='0,15 150,15 165,3 180,27 195,15 210,15 225,8 240,22 255,15 600,15'
+fill='none' stroke='#D62828' stroke-width='2' opacity='0.5'/>
+</svg>
+</div>
+""", unsafe_allow_html=True)
+
 from pipeline import predict_cardiotoxicity, AD_THRESHOLD
 from report_utils import generate_single_pdf, generate_single_csv
 from rdkit import Chem
