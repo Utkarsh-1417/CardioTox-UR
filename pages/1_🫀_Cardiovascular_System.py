@@ -4,7 +4,7 @@ st.set_page_config(page_title="Cardiovascular System & Cardiotoxicity", layout="
 
 st.markdown(
     "<div style='display:flex; align-items:center; gap:12px;'>"
-    "<span style='font-size:48px;'>🫀</span>"
+    "<span><svg width='44' height='44' viewBox='0 0 24 24' fill='#E63946' xmlns='http://www.w3.org/2000/svg'><path d='M12 21s-6.7-4.35-9.33-8.2C.86 10.28 1.4 6.66 4.36 4.86 6.5 3.56 9.14 4.02 12 6.98 14.86 4.02 17.5 3.56 19.64 4.86 22.6 6.66 23.14 10.28 21.33 12.8 18.7 16.65 12 21 12 21z'/></svg></span>"
     "<h1 style='margin:0;'><span style='color:#E63946;'>Cardiotox</span>"
     "<span style='color:#2A9D8F;'>-UR</span></h1>"
     "</div>",
