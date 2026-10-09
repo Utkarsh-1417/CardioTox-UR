@@ -35,15 +35,7 @@ def inject_watermark():
     </style>
     """, unsafe_allow_html=True)
 
-def logo_download_button():
-    st.sidebar.download_button(
-        label="⬇️ Download App Logo",
-        data=_logo_bytes(),
-        file_name="CardioTriad-UR_logo.png",
-        mime="image/png",
-        key="download_logo_btn",
-    )
+
 
 def apply_branding():
     inject_watermark()
-    logo_download_button()
