@@ -4,8 +4,8 @@ import streamlit as st
 
 ASSETS = Path(__file__).parent / "assets"
 
-WATERMARK_OPACITY = 0.10      # raise = stronger, lower = fainter
-WATERMARK_SIZE = "min(70vw, 760px)"
+WATERMARK_OPACITY = 0.05      # raise = stronger, lower = fainter
+WATERMARK_SIZE = "min(50vw, 500px)"
 
 @st.cache_resource
 def _b64(name):
